@@ -95,23 +95,7 @@ input,select,textarea{font-family:'Plus Jakarta Sans',sans-serif}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:#E5E7EB;border-radius:99px}
 ::-webkit-scrollbar-thumb:hover{background:#F97316}
-/* ─── SAVE BUTTON & UNSAVED INDICATOR ─── */
-.unsaved-banner{
-  display:none;background:linear-gradient(90deg,rgba(249,115,22,.15),rgba(249,115,22,.05));
-  border:1px solid rgba(249,115,22,.3);border-radius:var(--radius-sm);
-  padding:10px 16px;margin-bottom:12px;font-size:.85rem;color:var(--cs-orange);
-  align-items:center;gap:10px;
-}
-.unsaved-banner.show{display:flex}
-.btn-save{background:linear-gradient(120deg,var(--cs-green),#34D399);color:#fff;box-shadow:0 4px 14px rgba(16,185,129,.25)}
-.btn-save:hover{filter:brightness(1.07);transform:translateY(-2px)}
 
-
-
-/* ─── FB TOPBAR PILL ─── */
-.fb-pill{display:inline-flex;align-items:center;gap:5px;background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.25);border-radius:99px;padding:4px 10px;font-size:.74rem;font-weight:700;color:#059669}
-.fb-pill.offline{background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.25);color:#D97706}
-.fb-pill-dot{width:6px;height:6px;border-radius:50%;background:currentColor;animation:blink 1.4s infinite}
 /* ─── SCREEN MANAGEMENT ─── */
 .screen{display:none;position:relative;z-index:1}
 .screen.active{display:flex;animation:screenIn .4s ease}
@@ -567,29 +551,7 @@ tr:hover td{background:rgba(249,115,22,.03)}
   font-size:.88rem;transition:border-color .2s,background .2s;
 }
 .scanner-box:hover{border-color:var(--cs-orange);background:rgba(249,115,22,.04);color:var(--cs-orange)}
-/* ─── BARCODE SCAN BEEP / ANIMATION ─── */
-@keyframes scanSuccess{0%{transform:scale(1)}20%{transform:scale(1.18)}100%{transform:scale(1)}}
-.scan-success-flash{animation:scanSuccess .35s ease}
-
 #scanner-preview{width:100%;max-height:220px;object-fit:cover;border-radius:8px;display:none;margin-top:10px}
-/* ─── SCANNER FRAME OVERLAY ─── */
-.scanner-video-wrap{position:relative;border-radius:var(--radius-sm);overflow:hidden;background:#000}
-.scan-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
-.scan-frame{position:relative;width:220px;height:140px;border:2px solid rgba(249,115,22,.6)}
-.scan-frame-tr{position:absolute;top:-2px;right:-2px;width:24px;height:24px;border-top:3px solid var(--cs-orange);border-right:3px solid var(--cs-orange)}
-.scan-frame-bl{position:absolute;bottom:-2px;left:-2px;width:24px;height:24px;border-bottom:3px solid var(--cs-orange);border-left:3px solid var(--cs-orange)}
-.scan-line{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--cs-orange),transparent);animation:scanLine 1.8s ease-in-out infinite;top:0}
-@keyframes scanLine{0%,100%{top:0;opacity:.6}50%{top:calc(100% - 2px);opacity:1}}
-.scanner-header{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:rgba(0,0,0,.6);color:#fff;font-size:.82rem}
-.scanner-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#22c55e;margin-right:6px;animation:blink 1s infinite}
-.scanner-footer{display:flex;justify-content:center;padding:8px}
-.scanner-footer button{background:rgba(239,68,68,.2);border:1px solid rgba(239,68,68,.4);color:#f87171;border-radius:8px;padding:6px 16px;cursor:pointer;font-size:.83rem}
-.scanner-footer button:hover{background:rgba(239,68,68,.35)}
-.camera-switch-btn{position:absolute;bottom:8px;right:8px;background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:50%;width:36px;height:36px;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center}
-.camera-switch-btn:hover{background:rgba(249,115,22,.5)}
-@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
-.spinning{animation:spin .4s linear}
-
 
 /* ─── SETTINGS CARDS ─── */
 .settings-card{
@@ -911,10 +873,6 @@ tr:hover td{background:rgba(249,115,22,.03)}
 
       <!-- ── PRODUCTS PAGE ── -->
       <div class="page" id="page-products">
-        <div class="unsaved-banner" id="unsaved-banner">
-          ⚠️ <span>You have unsaved changes. Click "Save Inventory" to make them permanent.</span>
-          <button class="btn btn-save btn-sm" onclick="saveInventory()" style="margin-left:auto">💾 Save Inventory</button>
-        </div>
         <div class="table-card">
           <div class="table-header">
             <h3>📦 All Products</h3>
@@ -926,7 +884,6 @@ tr:hover td{background:rgba(249,115,22,.03)}
               <option value="critical">Critical</option>
             </select>
             <button class="btn btn-primary btn-sm" onclick="openAddModal()">+ Add</button>
-            <button class="btn btn-save btn-sm" onclick="saveInventory()">💾 Save Inventory</button>
             <button class="btn btn-outline btn-sm" onclick="exportCSV()">⬇ CSV</button>
             <button class="btn btn-outline btn-sm" onclick="exportPDF()">⬇ PDF</button>
           </div>
@@ -1178,31 +1135,12 @@ let _useFirebase = false;
 let _db = null;
 
 function initFirebaseBridge() {
-  if (window._fbReady && window._db && window._auth && window._authFns) {
-    const { onAuthStateChanged } = window._authFns;
-    onAuthStateChanged(window._auth, (user) => {
-      if (user) {
-        _useFirebase = true;
-        _db = window._db;
-        updateFbUI(true);
-        // Restore admin screen if already logged in (refresh)
-        const cur = document.querySelector('.screen.active');
-        if (!cur || cur.id === 'screen-landing') {
-          showScreen('admin');
-          refreshAll();
-          showPage('dashboard');
-        }
-        loadFromFirestore();
-      } else {
-        _useFirebase = false;
-        updateFbUI(false);
-        // Only redirect to landing if not already there
-        const cur = document.querySelector('.screen.active');
-        if (cur && cur.id !== 'screen-landing') {
-          // user explicitly logged out or session expired
-        }
-      }
-    });
+  if (window._fbReady && window._db) {
+    _useFirebase = true;
+    _db = window._db;
+    updateFbUI(true);
+    // Load data from Firestore
+    loadFromFirestore();
   } else {
     updateFbUI(false);
   }
@@ -1234,7 +1172,6 @@ async function loadFromFirestore() {
     const snap = await getDocs(collection(_db, 'cs_products'));
     if (!snap.empty) {
       products = snap.docs.map(d => ({ ...d.data(), _docId: d.id }));
-      savedProducts = JSON.parse(JSON.stringify(products));
       save();
     }
     const tsnap = await getDocs(query(collection(_db, 'cs_transactions'), orderBy('ts','desc')));
@@ -1279,9 +1216,7 @@ async function saveTransactionToFirestore(tx) {
 // ═══════════════════════════════════════
 const ADMIN_CREDS = { user:'admin@cognospace.in', pass:'CognoAdmin@2026' };
 let products = JSON.parse(localStorage.getItem('cs_products') || '[]');
-let savedProducts = JSON.parse(localStorage.getItem('cs_products') || '[]'); // tracks last-saved state
 let transactions = JSON.parse(localStorage.getItem('cs_transactions') || '[]');
-let _hasUnsavedChanges = false;
 let currentPage = 'dashboard';
 let tableCurrentPage = 1;
 const TABLE_PAGE_SIZE = 10;
@@ -1353,7 +1288,6 @@ async function doAdminLogin() {
       const { signInWithEmailAndPassword } = window._authFns;
       await signInWithEmailAndPassword(window._auth, u, p);
       err.style.display='none';
-      _hasUnsavedChanges=false;
       showScreen('admin');
       refreshAll();
       showPage('dashboard');
@@ -1373,7 +1307,6 @@ async function doAdminLogin() {
   // Fallback: hardcoded credentials when Firebase not configured
   if (u===ADMIN_CREDS.user && p===ADMIN_CREDS.pass) {
     err.style.display='none';
-    _hasUnsavedChanges=false;
     showScreen('admin');
     refreshAll();
     showPage('dashboard');
@@ -1697,7 +1630,7 @@ function saveProduct(){
     products.push(product);
     saveProductToFirestore(product);
   }
-  markUnsaved();save();populateCatFilter();refreshAll();closeModal('modal-product');
+  save();populateCatFilter();refreshAll();closeModal('modal-product');
   toast(editId?'Product updated!':'Product added! ✅','success');
 }
 
@@ -1729,7 +1662,7 @@ function applyQtyChange(){
   transactions.push(tx);
   saveProductToFirestore(products[idx]);
   saveTransactionToFirestore(tx);
-  markUnsaved();save();refreshAll();closeModal('modal-qty');
+  save();refreshAll();closeModal('modal-qty');
   toast(`Stock ${qtyType==='add'?'added':'removed'}!`,'success');
 }
 
@@ -1745,7 +1678,7 @@ function openDeleteModal(id){
 function confirmDelete(){
   products=products.filter(p=>p.id!==deleteTargetId);
   deleteProductFromFirestore(deleteTargetId);
-  markUnsaved();save();populateCatFilter();refreshAll();closeModal('modal-delete');
+  save();populateCatFilter();refreshAll();closeModal('modal-delete');
   toast('Product deleted','warning');
 }
 
@@ -1859,10 +1792,6 @@ function startCamera(container,facingMode){
         const code=data.codeResult.code;
         document.getElementById('co-id-input').value=code;
         lookupProduct(code);
-        playBeep();
-        // Flash scan frame
-        const sf=document.querySelector('.scan-frame');
-        if(sf){sf.classList.add('scan-success-flash');setTimeout(()=>sf.classList.remove('scan-success-flash'),400);}
         toast('Barcode: '+code,'success');
         stopCoScanner();
       });
@@ -1899,7 +1828,6 @@ function openModalScanner(){
       Quagga.onDetected(data=>{
         const code=data.codeResult.code;
         document.getElementById('p-barcode').value=code;
-        playBeep();
         toast('Barcode scanned: '+code,'success');
         stopModalScanner();
       });
@@ -1980,45 +1908,6 @@ function saveSettings(){
   const t=parseInt(document.getElementById('default-threshold').value)||10;
   localStorage.setItem('cs_default_threshold',t);
   toast('Settings saved!','success');
-}
-
-// ─── INVENTORY SAVE ───
-function markUnsaved(){
-  _hasUnsavedChanges=true;
-  const b=document.getElementById('unsaved-banner');
-  if(b)b.classList.add('show');
-}
-
-function saveInventory(){
-  // Commit: update savedProducts to current products
-  savedProducts=JSON.parse(JSON.stringify(products));
-  localStorage.setItem('cs_products',JSON.stringify(savedProducts));
-  // Also push to Firestore if connected
-  if(_useFirebase){
-    products.forEach(p=>saveProductToFirestore(p));
-  }
-  _hasUnsavedChanges=false;
-  const b=document.getElementById('unsaved-banner');
-  if(b)b.classList.remove('show');
-  toast('Inventory saved successfully! ✅','success');
-}
-
-// ─── BARCODE SCAN BEEP ───
-function playBeep(){
-  try{
-    const ctx=new (window.AudioContext||window.webkitAudioContext)();
-    const osc=ctx.createOscillator();
-    const gain=ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.type='square';
-    osc.frequency.setValueAtTime(1200,ctx.currentTime);
-    osc.frequency.setValueAtTime(900,ctx.currentTime+0.05);
-    gain.gain.setValueAtTime(0.3,ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.15);
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime+0.15);
-  }catch(e){}
 }
 
 // ═══════════════════════════════════════
