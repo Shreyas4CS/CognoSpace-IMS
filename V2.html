@@ -1298,7 +1298,25 @@ let coScannerStream = null;
 let searchQuery = '';
 let currentFacingMode = 'environment';
 
-// seedData removed — products start at 0, admin adds them manually
+// ═══════════════════════════════════════
+//  SEED DATA
+// ═══════════════════════════════════════
+function seedData() {
+  if (products.length > 0) return;
+  const names = [
+    ['Vim Dish Wash','Cleaning','ltr'],['Dettol Hand Wash','Cleaning','ml'],
+    ['A4 Paper Ream','Stationery','nos'],['Whiteboard Marker','Stationery','nos'],
+    ['Stapler Pins','Stationery','box'],['Instant Coffee Powder','Food','g'],
+    ['Sugar','Food','kg'],['Tea Bags','Food','nos'],
+    ['Dust Bin Bags','Cleaning','nos'],['Extension Board','Electronics','nos'],
+    ['Safety Gloves','Safety','pair'],['Sanitizer Bottle','Safety','ml'],
+  ];
+  names.forEach(([name,cat,unit],i) => {
+    const qty = Math.floor(Math.random()*80)+5;
+    products.push({id:genId(),name,cat,unit,qty,minStock:10,barcode:'',notes:'',createdAt:Date.now()-i*86400000});
+  });
+  save();
+}
 
 function genId() {
   const max = products.length > 0 ? Math.max(...products.map(p=>parseInt(p.id.replace('CS',''))||0)) : 0;
@@ -1751,10 +1769,7 @@ function setCoMode(mode){
 
 function lookupProduct(val){
   val=val.trim().toUpperCase();
-  if(!val) return;
-  const p=products.find(x=>x.id===val||(x.barcode&&x.barcode.trim().toUpperCase()===val));
-  const pfc=document.getElementById('pfc');
-  const pfcNotFound=document.getElementById('pfc-not-found');
+  const p=products.find(x=>x.id===val||(x.barcode&&x.barcode===val));
   if(p){
     coProduct=p;coQty=1;
     document.getElementById('pfc-name').textContent=p.name;
@@ -1762,23 +1777,16 @@ function lookupProduct(val){
     document.getElementById('pfc-cat').textContent=p.cat;
     document.getElementById('pfc-stock').textContent=`${p.qty} ${p.unit}`;
     document.getElementById('pfc-unit').textContent=p.unit;
-    pfc.style.display='block';
-    if(pfcNotFound) pfcNotFound.style.display='none';
+    document.getElementById('pfc').style.display='block';
     document.getElementById('co-qty-display').textContent='1';
     document.getElementById('co-unit-label').textContent=p.unit;
     document.getElementById('co-qty-row').style.display='flex';
     document.getElementById('co-confirm-btn').style.display='block';
   } else {
     coProduct=null;
-    pfc.style.display='none';
+    document.getElementById('pfc').style.display='none';
     document.getElementById('co-qty-row').style.display='none';
     document.getElementById('co-confirm-btn').style.display='none';
-    if(pfcNotFound){
-      document.getElementById('pfc-not-found-val').textContent=val;
-      pfcNotFound.style.display='block';
-    } else {
-      toast(`❌ Product not found: ${val}`,'error');
-    }
   }
 }
 
@@ -1826,14 +1834,9 @@ function renderCoRecent(){
 }
 
 // Camera
-let _scanBuffer = {}; // voting buffer for barcode accuracy
-let _scanDebounceTimer = null;
-const SCAN_REQUIRED_VOTES = 3; // need 3 consistent reads before accepting
-
 function openCoScanner(){
   const wrap=document.getElementById('co-scanner-wrap');
   const prev=document.getElementById('co-scanner-preview');
-  _scanBuffer = {};
   wrap.style.display='block';
   startCamera(prev,currentFacingMode);
 }
@@ -1841,54 +1844,27 @@ function openCoScanner(){
 function startCamera(container,facingMode){
   if(coScannerStream){coScannerStream.getTracks().forEach(t=>t.stop());coScannerStream=null;}
   try{Quagga.stop();}catch(e){}
-  _scanBuffer = {};
   container.innerHTML='';
   const label=document.getElementById('camera-facing-label');
   if(label)label.textContent=facingMode==='environment'?'Rear Camera':'Front Camera';
-  navigator.mediaDevices.getUserMedia({video:{facingMode,width:{ideal:1280},height:{ideal:720}}})
+  navigator.mediaDevices.getUserMedia({video:{facingMode}})
     .then(stream=>{
       coScannerStream=stream;
       const v=document.createElement('video');
       v.srcObject=stream;v.autoplay=true;v.playsinline=true;
       v.style.cssText='width:100%;height:200px;object-fit:cover;display:block';
       container.appendChild(v);
-      Quagga.init({
-        inputStream:{type:'LiveStream',target:v,constraints:{facingMode},area:{top:'10%',right:'10%',left:'10%',bottom:'10%'}},
-        decoder:{readers:['code_128_reader','ean_reader','ean_8_reader','code_39_reader','upc_reader'],multiple:false},
-        locate:true,
-        numOfWorkers:2,
-        frequency:10
-      },err=>{if(!err)Quagga.start()});
-      
-      Quagga.onProcessed(result=>{
-        // Only show scan frame if something detected
-        const sf=document.querySelector('.scan-frame');
-        if(!sf)return;
-        if(result&&result.boxes){sf.style.borderColor='rgba(249,115,22,0.8)';}
-      });
-      
+      Quagga.init({inputStream:{type:'LiveStream',target:v,constraints:{facingMode}},decoder:{readers:['code_128_reader','ean_reader','ean_8_reader','code_39_reader','upc_reader']}},err=>{if(!err)Quagga.start()});
       Quagga.onDetected(data=>{
-        // Confidence filter: skip low confidence reads
-        const err=data.codeResult.decodedCodes.filter(x=>x.error!==undefined).map(x=>x.error);
-        const avgErr=err.length?err.reduce((a,b)=>a+b,0)/err.length:1;
-        if(avgErr>0.25)return; // skip if avg error > 25%
-        
         const code=data.codeResult.code;
-        if(!code||code.trim()==='')return;
-        
-        // Voting: accumulate reads, accept when same code seen SCAN_REQUIRED_VOTES times
-        _scanBuffer[code]=(_scanBuffer[code]||0)+1;
-        if(_scanBuffer[code]>=SCAN_REQUIRED_VOTES){
-          _scanBuffer={};
-          clearTimeout(_scanDebounceTimer);
-          document.getElementById('co-id-input').value=code;
-          lookupProduct(code);
-          playBeep();
-          const sf=document.querySelector('.scan-frame');
-          if(sf){sf.classList.add('scan-success-flash');setTimeout(()=>sf.classList.remove('scan-success-flash'),400);}
-          toast('Barcode: '+code,'success');
-          stopCoScanner();
-        }
+        document.getElementById('co-id-input').value=code;
+        lookupProduct(code);
+        playBeep();
+        // Flash scan frame
+        const sf=document.querySelector('.scan-frame');
+        if(sf){sf.classList.add('scan-success-flash');setTimeout(()=>sf.classList.remove('scan-success-flash'),400);}
+        toast('Barcode: '+code,'success');
+        stopCoScanner();
       });
     }).catch(()=>{
       toast('Camera access denied or unavailable','error');
@@ -2062,7 +2038,7 @@ function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').
 // ═══════════════════════════════════════
 //  INIT
 // ═══════════════════════════════════════
-// NO seed data — start empty, admin adds products
+seedData();
 populateCatFilter();
 
 // Firebase bridge init — check immediately and also on event
