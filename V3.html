@@ -1828,7 +1828,7 @@ function renderCoRecent(){
 // Camera
 let _scanBuffer = {}; // voting buffer for barcode accuracy
 let _scanDebounceTimer = null;
-const SCAN_REQUIRED_VOTES = 2; // need 2 consistent reads before accepting
+const SCAN_REQUIRED_VOTES = 3; // need 3 consistent reads before accepting
 
 function openCoScanner(){
   const wrap=document.getElementById('co-scanner-wrap');
@@ -1871,7 +1871,7 @@ function startCamera(container,facingMode){
         // Confidence filter: skip low confidence reads
         const err=data.codeResult.decodedCodes.filter(x=>x.error!==undefined).map(x=>x.error);
         const avgErr=err.length?err.reduce((a,b)=>a+b,0)/err.length:1;
-        if(avgErr>0.4)return; // skip if avg error > 40%
+        if(avgErr>0.25)return; // skip if avg error > 25%
         
         const code=data.codeResult.code;
         if(!code||code.trim()==='')return;
