@@ -1112,7 +1112,7 @@ tr:hover td{background:rgba(249,115,22,.03)}
         <div class="form-group"><label>Category *</label><input type="text" class="form-control" id="p-cat" placeholder="e.g. Cleaning, Food…" list="cat-list"/><datalist id="cat-list"></datalist></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>Quantity *</label><input type="number" class="form-control" id="p-qty" placeholder="0" min="0"/><div id="qty-edit-hint" class="form-help" style="display:none;color:var(--cs-orange);font-weight:600">⚠️ Quantity is the master stock count — use Check-In / Check-Out or the ± Qty button to update it.</div></div>
+        <div class="form-group"><label>Quantity *</label><input type="number" class="form-control" id="p-qty" placeholder="0" min="0"/></div>
         <div class="form-group"><label>Unit *</label>
           <select class="form-control" id="p-unit">
             <option value="nos">nos (pieces)</option><option value="kg">kg</option><option value="g">g (grams)</option>
@@ -1637,14 +1637,11 @@ function openAddModal(){
   document.getElementById('p-name').value='';
   document.getElementById('p-cat').value='';
   document.getElementById('p-qty').value='';
-  document.getElementById('p-qty').disabled=false;
   document.getElementById('p-unit').value='nos';
   document.getElementById('p-min').value='10';
   document.getElementById('p-barcode').value='';
   document.getElementById('p-notes').value='';
   document.getElementById('id-preview').textContent=genId();
-  const hint=document.getElementById('qty-edit-hint');
-  if(hint){hint.style.display='none';}
   openModal('modal-product');
 }
 
@@ -1655,17 +1652,12 @@ function openEditModal(id){
   document.getElementById('modal-title').textContent='Edit Product';
   document.getElementById('p-name').value=p.name;
   document.getElementById('p-cat').value=p.cat;
+  document.getElementById('p-qty').value=p.qty;
   document.getElementById('p-unit').value=p.unit;
   document.getElementById('p-min').value=p.minStock;
   document.getElementById('p-barcode').value=p.barcode||'';
   document.getElementById('p-notes').value=p.notes||'';
   document.getElementById('id-preview').textContent=id;
-  // In edit mode: qty is master stock — show read-only, never allow direct editing
-  const qtyGroup=document.getElementById('p-qty').closest('.form-group');
-  document.getElementById('p-qty').value=p.qty;
-  document.getElementById('p-qty').disabled=true;
-  const hint=document.getElementById('qty-edit-hint');
-  if(hint){hint.style.display='block';}
   openModal('modal-product');
 }
 
@@ -1680,11 +1672,9 @@ function saveProduct(){
   if(!name||!cat){toast('Name and category are required','error');return;}
   const editId=document.getElementById('edit-id').value;
   if(editId){
-    // EDIT: never overwrite qty — master running stock is managed only by check-in/check-out and the ±Qty modal
     const idx=products.findIndex(p=>p.id===editId);
-    if(idx>-1){products[idx]={...products[idx],name,cat,unit,minStock,barcode,notes};saveProductToFirestore(products[idx]);}
+    if(idx>-1){products[idx]={...products[idx],name,cat,qty,unit,minStock,barcode,notes};saveProductToFirestore(products[idx]);}
   } else {
-    // NEW product: initial qty is set once here at creation time
     const product={id:genId(),name,cat,qty,unit,minStock,barcode,notes,createdAt:Date.now()};
     products.push(product);
     saveProductToFirestore(product);
@@ -1799,10 +1789,8 @@ function adjustCoQty(delta){
 
 function confirmTransaction(){
   if(!coProduct)return;
+  if(coMode==='out'&&coProduct.qty<coQty){toast('Not enough stock!','error');return;}
   const idx=products.findIndex(p=>p.id===coProduct.id);
-  if(idx<0){toast('Product not found!','error');return;}
-  // Always check live stock, not the stale coProduct snapshot from lookup time
-  if(coMode==='out'&&products[idx].qty<coQty){toast('Not enough stock!','error');return;}
   products[idx].qty+=coMode==='in'?coQty:-coQty;
   const tx={productId:coProduct.id,type:coMode,qty:coQty,ts:Date.now(),by:'Scanner'};
   transactions.push(tx);
