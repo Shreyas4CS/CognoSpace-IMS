@@ -1797,7 +1797,6 @@ function confirmTransaction(){
   saveProductToFirestore(products[idx]);
   saveTransactionToFirestore(tx);
   save();
-  refreshAll();
   toast(`${coMode==='out'?'Checked out':'Checked in'}: ${coQty} × ${coProduct.name}`,'success');
   renderCoRecent();
   coProduct=null;coQty=1;
